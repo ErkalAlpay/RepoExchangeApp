@@ -1,0 +1,48 @@
+spring:
+  Jpa:
+    open-in-view: false
+  application:
+    name: corso
+
+  datasource:
+    url: jdbc:sqlserver://192.168.144.76:1450;databaseName=corso;encrypt=true;trustServerCertificate=true
+    username: grup3
+    password: inFina2050!!**
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServer2012Dialect
+        format_sql: true
+        use_sql_comments: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  session:
+    store-type: redis
+
+logging:
+  file:
+    name: ./logs/login.log
+  level:
+    root: info
+    com.: DEBUG
+    org.springframework.security: DEBUG
+#    org.springframework.web: trace
+  spring:
+    mail:
+      host: smtp.gmail.com
+      port: 587
+      username: infinaakademi@gmail.com
+      password: svvg xhnq scjs ovla
+      properties:
+        mail:
+          smtp:
+            auth: true
+            starttls:
+              enable: true
