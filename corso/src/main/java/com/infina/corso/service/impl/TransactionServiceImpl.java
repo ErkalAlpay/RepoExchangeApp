@@ -4,11 +4,10 @@ import com.infina.corso.config.ModelMapperConfig;
 import com.infina.corso.dto.request.AccountRequestTransaction;
 import com.infina.corso.dto.request.TransactionRequest;
 import com.infina.corso.dto.response.TransactionResponse;
+import com.infina.corso.exception.InsufficientFundsException;
 import com.infina.corso.exception.UserNotFoundException;
 import com.infina.corso.model.*;
-import com.infina.corso.repository.AccountRepository;
-import com.infina.corso.repository.TransactionRepository;
-import com.infina.corso.repository.UserRepository;
+import com.infina.corso.repository.*;
 import com.infina.corso.service.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +16,7 @@ import javax.security.auth.login.AccountNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,8 +32,10 @@ public class TransactionServiceImpl implements TransactionService {
     private final AccountService accountService;
     private final UserServiceImpl userServiceImpl;
     private final SystemDateService systemDateService;
+    private final CustomerRepository customerRepository;
+    private final SystemDateRepository systemDateRepository;
 
-    public TransactionServiceImpl(TransactionRepository transactionRepository, ModelMapperConfig modelMapperConfig, UserServiceImpl userServiceImpl, CurrencyServiceImp currencyService, CustomerService customerService, AccountRepository accountRepository, UserRepository userRepository, AccountService accountService, SystemDateService systemDateService) {
+    public TransactionServiceImpl(TransactionRepository transactionRepository, ModelMapperConfig modelMapperConfig, UserServiceImpl userServiceImpl, CurrencyServiceImp currencyService, CustomerService customerService, AccountRepository accountRepository, UserRepository userRepository, AccountService accountService, SystemDateService systemDateService, CustomerRepository customerRepository, SystemDateRepository systemDateRepository) {
         this.transactionRepository = transactionRepository;
         this.modelMapperConfig = modelMapperConfig;
         this.userService = userServiceImpl;
@@ -44,65 +46,62 @@ public class TransactionServiceImpl implements TransactionService {
         this.accountService = accountService;
         this.userServiceImpl = userServiceImpl;
         this.systemDateService = systemDateService;
+        this.customerRepository = customerRepository;
+        this.systemDateRepository = systemDateRepository;
     }
 
     @Transactional
     public void transactionSave(TransactionRequest transactionRequest) {
-        if(!systemDateService.isDayClosedStarted()) {
+        if (!systemDateService.isDayClosedStarted()) {
             try {
                 LocalDate systemDate = systemDateService.getSystemDate();
-                AccountRequestTransaction accountRequestTransaction = accountService.checkIfAccountExists(transactionRequest.getAccountNumber(), transactionRequest.getPurchasedCurrency());
+                AccountRequestTransaction accountRequestTransaction = accountService.checkIfAccountExists(transactionRequest.getAccount_id(), transactionRequest.getPurchasedCurrency());
                 if (accountRequestTransaction.getAccountNo() != null) {
                     Transaction transaction = modelMapperConfig.modelMapperForRequest().map(transactionRequest, Transaction.class);
                     transaction.setSystemDate(systemDate);
-                    Account account = accountRepository.findByAccountNumber(transactionRequest.getAccountNumber());
-                    account.getTransactions().add(transaction);
-                    // Çapraz kur işlemi olup olmadığını kontrol et
+                    Optional<Account> account = accountRepository.findById(transactionRequest.getAccount_id());
+                    account.get().getTransactions().add(transaction);
                     boolean isCrossRate = !transactionRequest.getSoldCurrency().equals("TL") && !transactionRequest.getPurchasedCurrency().equals("TL");
                     if (isCrossRate) {
-                        Double rate = calculateCurrencyRate(transactionRequest);
+                        Double rate = calculateCurrencyRate(transactionRequest.getSoldCurrency(), transactionRequest.getPurchasedCurrency());
+                        transaction.setRate(rate);
                         double transactionAmountInSoldCurrency = transactionRequest.getAmount();
-                        BigDecimal newBalance = calculateTransactionCostForCross(account, transactionRequest.getAmount(), rate);
-                        //hesap bakiye yeterlilik kontrolü
+                        BigDecimal newBalance = calculateTransactionCostForCross(account.get(), transactionRequest.getAmount(), rate, transaction);
                         if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
-                            throw new RuntimeException("Insufficient funds for account number:  " + account.getAccountNumber());
-                        }
-                        //maliyeti transaction içine set edilmesi
-                 /* BigDecimal costBigDecimal = calculateNewBalanceForCross(transaction.getAmount(), rate);
-                    double cost = costBigDecimal.doubleValue();
-                    transaction.setCost(cost); */
-                        account.setBalance(newBalance);
+                            throw new InsufficientFundsException("Insufficient funds for account number: " + account.get().getAccountNumber());
+                                    }
+                        account.get().setBalance(newBalance);
                     } else {
+                        BigDecimal newBalance;
                         if (transaction.getSoldCurrency().equals("TL")) {
                             transaction.setTransactionType('A');
-                        } else transaction.setTransactionType('S');
-                        BigDecimal newBalance = calculateNewBalanceForTRY(account, transaction.getAmount(), transaction.getPurchasedCurrency(), transaction.getTransactionType());
-                        if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
-                            throw new RuntimeException("Insufficient funds for account number: " + account.getAccountNumber());
+                            transaction.setRate(Double.parseDouble(currencyService.findByCode(transactionRequest.getPurchasedCurrency()).getSelling()));
+                            newBalance = calculateNewBalanceForTRY(account.get(), transaction.getAmount(), transaction.getPurchasedCurrency(), transaction.getTransactionType(),transaction);
+                        } else {
+                            transaction.setTransactionType('S');
+                            transaction.setRate(Double.parseDouble(currencyService.findByCode(transactionRequest.getSoldCurrency()).getBuying()));
+                            newBalance = calculateNewBalanceForTRY(account.get(), transaction.getAmount(), transaction.getSoldCurrency(), transaction.getTransactionType(), transaction);
                         }
-                        //maliyeti transaction içine set edilmesi
-                 /* BigDecimal costDecimal = calculateTransactionCostForTRY(transaction.getTransactionType(), transactionRequest.getAmount(), transactionRequest.getPurchasedCurrency());
-                    double cost = costDecimal.doubleValue();
-                    transaction.setCost(cost); */
-                        account.setBalance(newBalance);
+                        if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+                            throw new InsufficientFundsException("Insufficient funds for account number: " + account.get().getAccountNumber());
+                        }
+                        account.get().setBalance(newBalance);
                     }
-                    //satın alınan döviz türündeki hesabın bakiyesinin güncellenmesi
                     Account accountPurchasedCurrency = accountRepository.findByAccountNumber(accountRequestTransaction.getAccountNo());
                     BigDecimal amountToAdd = BigDecimal.valueOf(transactionRequest.getAmount());
                     BigDecimal updatedBalancePurchasedCurrency = accountPurchasedCurrency.getBalance().add(amountToAdd);
                     accountPurchasedCurrency.setBalance(updatedBalancePurchasedCurrency);
-                    //
                     User user = userRepository.findById(transactionRequest.getUser_id())
                             .orElseThrow(() -> new UserNotFoundException("User not found with id: " + transactionRequest.getUser_id()));
                     transaction.setUser(user);
-                    transaction.setAccount(account);
+                    transaction.setAccount(account.get());
                     transactionRepository.save(transaction);
                     user.getTransactions().add(transaction);
-                    accountRepository.save(account);
+                    accountRepository.save(account.get());
                     accountRepository.save(accountPurchasedCurrency);
                     userRepository.save(user);
                 } else
-                    throw new AccountNotFoundException("Customer does not have an account in the desired currency. Please open an account first");
+                    throw new AccountNotFoundException("Account not found with id: " + transactionRequest.getAccount_id());
             } catch (AccountNotFoundException e) {
                 System.out.println("Account not found: " + e.getMessage());
             } catch (UserNotFoundException e) {
@@ -116,9 +115,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     //Parite işlemleri için hesaplar **************************************************
-    private Double calculateCurrencyRate(TransactionRequest transactionRequest) {
-        String soldCurrency = transactionRequest.getSoldCurrency();
-        String purchasedCurrency = transactionRequest.getPurchasedCurrency();
+    public Double calculateCurrencyRate(String soldCurrency, String purchasedCurrency) {
         return rateCalculate(soldCurrency, purchasedCurrency);
     }
 
@@ -131,14 +128,15 @@ public class TransactionServiceImpl implements TransactionService {
         return rate;
     }
 
-    private BigDecimal calculateTransactionCostForCross(Account account, double amount, double rate) {
+    private BigDecimal calculateTransactionCostForCross(Account account, double amount, double rate, Transaction transaction) {
         BigDecimal balance = account.getBalance();
         BigDecimal cost = calculateNewBalanceForCross(amount, rate);
+        transaction.setCost(cost.doubleValue());
         BigDecimal newBalance = balance.subtract(cost);
         return newBalance;
     }
 
-    private BigDecimal calculateNewBalanceForCross(double amount, double rate) {
+    public BigDecimal calculateNewBalanceForCross(double amount, double rate) {
         BigDecimal amountBigDecimal = BigDecimal.valueOf(amount);
         BigDecimal rateBigDecimal = BigDecimal.valueOf(rate);
         BigDecimal cost = amountBigDecimal.multiply(rateBigDecimal);
@@ -150,16 +148,20 @@ public class TransactionServiceImpl implements TransactionService {
     private BigDecimal calculateTransactionCostForTRY(char transactionType, double amount, String currencyCode) {
         Currency currency = currencyService.findByCode(currencyCode);
         double currencyPrice;
+        BigDecimal cost;
         if (transactionType == 'S') {
-            currencyPrice = Double.parseDouble(currency.getBuying());
-        } else currencyPrice = Double.parseDouble(currency.getSelling());
-        BigDecimal cost = new BigDecimal(currencyPrice * amount);
+            cost = new BigDecimal(amount);
+        } else {
+            currencyPrice = Double.parseDouble(currency.getSelling());
+            cost = new BigDecimal(currencyPrice * amount);
+        }
         return cost;
     }
 
-    private BigDecimal calculateNewBalanceForTRY(Account account, double amount, String purchasedCurrency, char transactionType) {
+    private BigDecimal calculateNewBalanceForTRY(Account account, double amount, String purchasedCurrency, char transactionType, Transaction transaction) {
         BigDecimal balance = account.getBalance();
         BigDecimal cost = calculateTransactionCostForTRY(transactionType, amount, purchasedCurrency);
+        transaction.setCost(cost.doubleValue());
         BigDecimal newBalance = balance.subtract(cost);
         return newBalance;
     }
@@ -177,13 +179,28 @@ public class TransactionServiceImpl implements TransactionService {
         return convertTractionListAsDto(transactionList);
     }
 
+    public List<TransactionResponse> collectAllTransactionForDayClose (){
+        LocalDate localDate = systemDateRepository.findById(1).get().getDate();
+        List<Transaction> transactionList = transactionRepository.findBySystemDate(localDate);
+        return convertTractionListAsDto(transactionList);
+    }
+
+
+
     //Entity listesinin Dto listesine çevrimi
     private List<TransactionResponse> convertTractionListAsDto(List<Transaction> transactionList) {
         return transactionList.stream()
-                .map(transaction -> modelMapperConfig.modelMapperForTransaction()
-                        .map(transaction, TransactionResponse.class))
+                .map(transaction -> {
+                    TransactionResponse response = modelMapperConfig.modelMapperForTransaction()
+                            .map(transaction, TransactionResponse.class);
+                    // Transaction'dan Account'a ve Account'tan Customer'a ulaşarak ad ve soyadını alıyoruz.
+                    Customer customer = transaction.getAccount().getCustomer();
+                    response.setName(customer.getName());
+                    response.setSurname(customer.getSurname());
+                    return response;
+                })
                 .collect(Collectors.toList());
-    }
 
+    }
 
 }

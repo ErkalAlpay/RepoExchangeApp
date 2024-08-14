@@ -23,7 +23,19 @@ public class ErrorHandler {
             AuthenticationException.class,
             GeneralErrorException.class,
             AccountAlreadyExistsException.class,
-            AccessDeniedException.class
+            InvalidTokenException.class,
+            UserNotBlockedException.class,
+            PasswordMismatchException.class,
+            AccessDeniedException.class,
+            AccountAlreadyActiveException.class,
+            AccountNotFoundException.class,
+            CustomerNotFoundException.class,
+            InsufficientFundsException.class,
+            CurrencyNotFoundException.class,
+            SystemDateNotFoundException.class,
+
+
+
     })
     ResponseEntity<ApiError> handleCustomException(Exception exception, HttpServletRequest request) {
         ApiError error = new ApiError();
@@ -48,6 +60,24 @@ public class ErrorHandler {
             error.setStatus(403);
         } else if (exception instanceof AccountAlreadyExistsException) {
             error.setStatus(409);
+        } else if (exception instanceof InvalidTokenException) {
+            error.setStatus(401);
+        } else if (exception instanceof UserNotBlockedException) {
+            error.setStatus(400);
+        } else if (exception instanceof PasswordMismatchException) {
+            error.setStatus(400);
+        } else if (exception instanceof AccountAlreadyActiveException) {
+            error.setStatus(409);
+        } else if (exception instanceof AccountNotFoundException) {
+            error.setStatus(404);
+        } else if (exception instanceof CustomerNotFoundException) {
+            error.setStatus(404);
+        } else if (exception instanceof InsufficientFundsException) {
+            error.setStatus(400);
+        } else if (exception instanceof CurrencyNotFoundException) {
+            error.setStatus(404);
+        } else if (exception instanceof SystemDateNotFoundException) {
+            error.setStatus(404);
         }
         return ResponseEntity.status(error.getStatus()).body(error);
     }

@@ -39,8 +39,11 @@ public class Transaction {
     @Column
     private int amount;
 
-   /* @Column
-    private double cost; */
+   @Column
+    private Double cost;
+
+    @Column
+    private Double rate;
 
     @Column
     private LocalDate systemDate;

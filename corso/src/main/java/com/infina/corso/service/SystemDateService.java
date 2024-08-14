@@ -6,7 +6,9 @@ import java.time.LocalDate;
 
 public interface SystemDateService {
     LocalDate getSystemDate();
-    void closeDay();
-    boolean isDayClosed();
+    void closeDay(LocalDate date);
+    void startCloseDay();
     boolean isDayClosedStarted();
+    void initializeSystemDate();
+    SystemDate getFullDateData();
 }

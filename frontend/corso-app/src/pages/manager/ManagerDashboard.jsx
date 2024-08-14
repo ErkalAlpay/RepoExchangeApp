@@ -9,7 +9,7 @@ const ManagerDashboard = () => {
                 <Sidebar />
             </div>
             <div className='col'>
-                <h1>Manager Dashboard</h1>
+                
                 <Outlet />
             </div>
         </main>

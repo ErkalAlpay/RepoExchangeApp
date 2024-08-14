@@ -17,9 +17,15 @@ public class RegisterManagerRequest {
     @NotBlank(message = "{corso.validation.notBlank.firstName}")
     private String firstName;
 
+    @Size(min = 5, max = 50)
+    @NotBlank
+    private String phone;
+
     @Size(min = 3, max = 50)
     @NotBlank(message = "{corso.validation.notBlank.lastName}")
     private String lastName;
+
+    private String username;
 
     @Size(min = 3, max = 50)
     @NotBlank(message = "{corso.validation.notBlank.email}")

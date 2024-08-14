@@ -1,7 +1,7 @@
 import AddCustomerPage from '../pages/customer/AddCustomerPage';
 import ListUser from '../pages/user/ListUser';
 import ListCustomerPage from '../pages/customer/ListCustomerPage';
-import ListAccountPage from '../pages/account/ListAccountPage';
+import ListAccountsForManagerPage from '../pages/account/ListAccountsForManagerPage';
 import ActivateUser from '../pages/user/ActivateUser';
 import ListTransactionHistoryPage from '../pages/transaction/ListTransactionHistoryPage';
 import TransactionOperationsPage from '../pages/transaction/TransactionOperationsPage';
@@ -11,6 +11,12 @@ import IbanPage from '../pages/iban/IbanPage';
 import AddAccountPage from '../pages/account/AddAccountPage';
 import AddCashPage from '../pages/cashflow/AddCashPage';
 import SendCashPage from '../pages/cashflow/SendCashPage';
+import AddUser from '../pages/user/AddUser';
+import ChangePassword from '../pages/user/ChangePassword';
+import AddBrokerPage from '../pages/broker/AddBrokerPage';
+import ListBrokerPage from './../pages/broker/ListBrokerPage';
+import ListAccountsForBrokerPage from './../pages/account/ListAccountsForBrokerPage';
+import ListTransactionHistoryPageForManager  from './../pages/transaction/ListTransactionHistoryPageForManager';
 
 // -------------- ADMIN --------------
 export const ADMIN = '/admin';
@@ -22,28 +28,31 @@ export const ADMIN_DASHBOARD = '/admin/dashboard';
 export const ADMIN_ADD_USER = '/dashboard/admin/add-user'; // register broker or manager
 export const ADMIN_LIST_BROKERS = '/dashboard/admin/list-user'; // user listeleniyor
 export const ADMIN_ACTVATE_USER = '/dashboard/admin/activate-user'; // authorize broker or manager by email.
+export const ADMIN_CHANGE_PASSWORD = '/dashboard/admin/change-password'
 
 export const ADMIN_OPERATIONS = [
     {
         title: 'Kullanıcı İşlemleri',
         title_link: null,
+        self_page: null,
         operations: [
             {
-                title: 'Kullanıcı Eke',
+                title: 'Yönetici Ekle',
                 link: ADMIN_ADD_USER,
                 page: <AddUser />,
             },
             {
-                title: 'Broker Listele',
+                title: 'Listele',
                 link: ADMIN_LIST_BROKERS,
                 page: <ListUser />,
             },
-            {
-                title: 'Kullanıcı Yetkilendir',
-                link: ADMIN_UPDATE_USER,
-                page: <ActivateUser />,
-            }
         ]
+    },
+    {
+        title: 'Şifre Değiştir',
+        title_link: ADMIN_CHANGE_PASSWORD,
+        self_page: <ChangePassword />,
+        operations: []
     }
 ];
 
@@ -58,6 +67,9 @@ export const MANAGER_LIST_ACCOUNTS = '/dashboard/manager/list-accounts'; // list
 export const MANAGER_TRANSACTION_HISTORY = '/dashboard/manager/list-transaction-history'; // list transaction history
 export const MANAGER_LIST_CASH_FLOW = '/dashboard/manager/cash-flow'; // cash flow history
 export const MANAGER_END_OF_DAY = '/dashboard/manager/end-of-day'; // end of day
+export const MANAGER_CHANGE_PASSWORD = '/dashboard/manager/change-password';
+export const MANAGER_ADD_BROKER = '/dashboard/manager/add-broker';
+export const MANAGER_LIST_BROKER = '/dashboard/manager/list-broker';
 
 export const MANAGER_OPERATIONS = [
     {
@@ -66,7 +78,7 @@ export const MANAGER_OPERATIONS = [
         self_page: null,
         operations: [
             {
-                title: 'Müşteri Listele',
+                title: 'Müşteri İşlemleri',
                 link: MANAGER_LIST_CUSTOMER,
                 page: <ListCustomerPage />,
             },
@@ -80,7 +92,7 @@ export const MANAGER_OPERATIONS = [
             {
                 title: 'Hesap Listele',
                 link: MANAGER_LIST_ACCOUNTS,
-                page: <ListAccountPage />,
+                page: <ListAccountsForManagerPage />,
             },
         ]
     },
@@ -90,10 +102,28 @@ export const MANAGER_OPERATIONS = [
         self_page: null,
         operations: [
             {
-                title: 'Gemiş İşlemler',
+                title: 'Geçmiş İşlemler',
                 link: MANAGER_TRANSACTION_HISTORY,
-                page: <ListTransactionPage />,
+                page: <ListTransactionHistoryPageForManager/>,
             },
+        ]
+
+    },
+    {
+        title: 'Personel İşlemleri',
+        title_link: null,
+        self_page: null,
+        operations: [
+            {
+                title: 'Ekle',
+                link: MANAGER_ADD_BROKER,
+                page: <AddBrokerPage />,
+            },
+            {
+                title: 'Listele',
+                link: MANAGER_LIST_BROKER,
+                page: <ListBrokerPage />
+            }
         ]
 
     },
@@ -110,6 +140,12 @@ export const MANAGER_OPERATIONS = [
         self_page: <EndOfDayPage />,
         operations: []
 
+    },
+    {
+        title: 'Şifre Değiştir',
+        title_link: MANAGER_CHANGE_PASSWORD,
+        self_page: <ChangePassword />,
+        operations: []
     }
 ];
 
@@ -141,10 +177,13 @@ export const BROKER_ADD_CASH = '/dashboard/broker/add-cash'; // add cash
 export const BROKER_SEND_CASH = '/dashboard/broker/send-cash'; // add cash
 // nakit akışı end
 
+export const BROKER_CHANGE_PASSWORD = '/dashboard/broker/change-password';
+
 export const BROKER_OPERATIONS = [
     {
-        title: 'Müşteri İşlemleri',
+        title: 'Müşteri Yönetimi',
         title_link: null,
+        self_page: null,
         operations: [
             {
                 title: 'Müşteri Ekle',
@@ -152,20 +191,21 @@ export const BROKER_OPERATIONS = [
                 page: <AddCustomerPage />,
             },
             {
-                title: 'Müşteri Listele',
+                title: 'Müşteri İşlemleri',
                 link: BROKER_LIST_CUSTOMER,
                 page: <ListCustomerPage />,
             },
-            {
-                title: 'IBAN İşlemleri',
-                link: BROKER_IBAN,
-                page: <IbanPage />,
-            }
+            // {
+            //     title: 'IBAN İşlemleri',
+            //     link: BROKER_IBAN,
+            //     page: <IbanPage />,
+            // }
         ]
     },
     {
         title: 'Hesap İşlemleri',
         title_link: null,
+        self_page: null,
         operations: [
             {
                 title: 'Hesap Ekle',
@@ -175,13 +215,14 @@ export const BROKER_OPERATIONS = [
             {
                 title: 'Hesap Listele',
                 link: BROKER_LIST_ACCOUNTS,
-                page: <ListAccountPage />,
+                page: <ListAccountsForBrokerPage />,
             }
         ]
     },
     {
         title: 'Alım-Satım İşlemleri',
         title_link: null,
+        self_page: null,
         operations: [
             {
                 title: 'Alım-Satım',
@@ -198,6 +239,7 @@ export const BROKER_OPERATIONS = [
     {
         title: 'Nakit Akışı',
         title_link: null,
+        self_page: null,
         operations: [
             {
                 title: 'Listele',
@@ -205,15 +247,21 @@ export const BROKER_OPERATIONS = [
                 page: <ListCashFlowPage />,
             },
             {
-                title: 'Nakit Ekle',
+                title: 'Para Yatır',
                 link: BROKER_ADD_CASH,
                 page: <AddCashPage />,
             },
             {
-                title: 'Nakit Gönder',
+                title: 'Para Gönder',
                 link: BROKER_SEND_CASH,
                 page: <SendCashPage />,
             }
         ]
+    },
+    {
+        title: 'Şifre Değiştir',
+        title_link: BROKER_CHANGE_PASSWORD,
+        self_page: <ChangePassword />,
+        operations: []
     }
 ];

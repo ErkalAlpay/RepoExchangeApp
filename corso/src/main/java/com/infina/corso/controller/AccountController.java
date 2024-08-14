@@ -3,6 +3,7 @@ package com.infina.corso.controller;
 import com.infina.corso.dto.request.CreateAccountRequest;
 import com.infina.corso.dto.response.GetAccountByIdResponse;
 import com.infina.corso.dto.response.GetAllAccountResponse;
+import com.infina.corso.dto.response.GetCustomerAccountsForTransactionPage;
 import com.infina.corso.service.AccountService;
 import com.infina.corso.shared.GenericMessage;
 import com.infina.corso.shared.Messages;
@@ -45,10 +46,16 @@ public class AccountController {
         return ResponseEntity.ok(accountService.getAccountsByCustomerId(customerId));
     }
 
-    @PostMapping
+    @GetMapping("/customer/transaction/{customerId}")
+    @Operation(summary = "Get accounts by customer ID", description = "Retrieve a list of accounts by customer ID.")
+    public ResponseEntity<List<GetCustomerAccountsForTransactionPage>> getAccountsBalanceBiggerThanZeroByCustomerId(@PathVariable Long customerId) {
+        return ResponseEntity.ok(accountService.getAccountsBalanceBiggerThanZeroByCustomerId(customerId));
+    }
+
+    @PostMapping("/{customerId}")
     @Operation(summary = "Create a new account", description = "Create a new account with the given details.")
     @PreAuthorize("hasRole('ROLE_BROKER') OR hasRole('ROLE_MANAGER')")
-    public GenericMessage createAccount(@RequestParam Long customerId, @RequestBody CreateAccountRequest createAccountRequest) {
+    public GenericMessage createAccount(@PathVariable Long customerId, @RequestBody CreateAccountRequest createAccountRequest) {
         accountService.createAccount(createAccountRequest, customerId);
         return new GenericMessage(Messages.getMessageForLocale("corso.create.account.success.message.successfully",
                 LocaleContextHolder.getLocale()));
@@ -70,5 +77,12 @@ public class AccountController {
         accountService.reactivateAccount(id);
         return new GenericMessage(Messages.getMessageForLocale("corso.reactivate.account.success.message",
                 LocaleContextHolder.getLocale()));
+    }
+
+    @GetMapping("/broker/{userId}")
+    @PreAuthorize("hasRole('ROLE_BROKER')")
+    @Operation(summary = "Get accounts by user ID", description = "Retrieve a list of accounts by user ID.")
+    public ResponseEntity<List<GetAllAccountResponse>> getAllAccountsForBroker(@PathVariable int userId) {
+        return ResponseEntity.ok(accountService.getAllAccountsForBroker(userId));
     }
 }

@@ -1,3 +1,5 @@
+import Sidebar from "../../components/Common/Sidebar";
+import { Outlet } from "react-router-dom";
 
 const AdminDashboard = () => {
     return (
@@ -6,7 +8,7 @@ const AdminDashboard = () => {
                 <Sidebar />
             </div>
             <div className='col'>
-                <h1>Admin Dashboard</h1>
+            
                 <Outlet />
             </div>
         </main>

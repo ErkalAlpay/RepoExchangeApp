@@ -5,9 +5,10 @@ import com.infina.corso.dto.request.AccountRequestTransaction;
 import com.infina.corso.dto.request.CreateAccountRequest;
 import com.infina.corso.dto.request.UpdateAccountRequest;
 import com.infina.corso.dto.response.GetAccountByIdResponse;
+import com.infina.corso.dto.response.GetAllAccountForEndOfDayResponse;
 import com.infina.corso.dto.response.GetAllAccountResponse;
-import com.infina.corso.exception.AccountAlreadyExistsException;
-import com.infina.corso.exception.UserNotFoundException;
+import com.infina.corso.dto.response.GetCustomerAccountsForTransactionPage;
+import com.infina.corso.exception.*;
 import com.infina.corso.model.Account;
 import com.infina.corso.model.Customer;
 import com.infina.corso.repository.AccountRepository;
@@ -19,7 +20,9 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -47,25 +50,27 @@ public class AccountServiceImp implements AccountService {
         Account newAccount = mapper.modelMapperForRequest().map(createAccountRequest, Account.class);
 
         if (accountRepository.findByCurrencyAndCustomerId(createAccountRequest.getCurrency(), customerId) != null) {
-            throw new AccountAlreadyExistsException("Account already exists with currency " + createAccountRequest.getCurrency());
+            throw new  AccountAlreadyExistsException();
         }
         newAccount.setAccountNumber("ACC" + new Random().nextInt(1000000));
         newAccount.setBalance(BigDecimal.valueOf(0.0));
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found with id " + customerId));
-        newAccount.setCustomer(customer);        return accountRepository.save(newAccount);
+                .orElseThrow(() -> new CustomerNotFoundException(customerId));
+        newAccount.setCustomer(customer);
+
+        return accountRepository.save(newAccount);
     }
     @Override
     public GetAccountByIdResponse updateAccount(Long customerId, Long accountId, UpdateAccountRequest updateAccountRequest) {
 
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found with id " + customerId));
+                .orElseThrow(() -> new CustomerNotFoundException(customerId));
 
         Account existingAccount = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found with id " + accountId));
+                .orElseThrow(() -> new AccountNotFoundException());
 
         if (!existingAccount.getCustomer().getId().equals(customerId)) {
-            throw new RuntimeException("Account does not belong to the specified customer");
+            throw new AccountOwnershipException();
         }
 
         mapper.modelMapperForRequest().map(updateAccountRequest, existingAccount);
@@ -78,11 +83,11 @@ public class AccountServiceImp implements AccountService {
         Account accountInDB = accountRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Account not found with id {}", id);
-                    throw new UserNotFoundException("Account not found with id " + id);
+                    throw new AccountNotFoundException();
                 });
         if (accountInDB.getBalance().compareTo(BigDecimal.ZERO) > 0) {
             logger.error("Attempt to delete account with balance: {}", accountInDB.getBalance());
-            throw new IllegalStateException("Account with id " + id + " has a balance and cannot be deleted.");
+            throw new AccountBalanceException();
         }
         logger.info("Account deleted: {}", accountInDB.getAccountNumber());
         accountInDB.setDeleted(true);
@@ -94,12 +99,12 @@ public class AccountServiceImp implements AccountService {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Account not found with id {}", id);
-                    throw new UserNotFoundException("Account not found with id " + id);
+                    throw new AccountNotFoundException();
                 });
         int currentUserId = authService.getCurrentUserId();
         if (account.getCustomer().getUser().getId() != currentUserId) {
             logger.error("Attempt to access unauthorized account: {}", account.getAccountNumber());
-            throw new RuntimeException("You are not authorized to see this account");
+            throw new AccessDeniedException();
         }
         return mapper.modelMapperForResponse().map(account, GetAccountByIdResponse.class);
     }
@@ -112,15 +117,36 @@ public class AccountServiceImp implements AccountService {
                 .collect(Collectors.toList());
     }
 
+    public List<GetAllAccountForEndOfDayResponse> getAllAccountsforEndOfDay() {
+        List<Account> accounts = accountRepository.findAll();
+        return accounts.stream()
+                .map(account -> {
+                    GetAllAccountForEndOfDayResponse response = mapper.modelMapperForResponse()
+                            .map(account, GetAllAccountForEndOfDayResponse.class);
+                    Customer customer = account.getCustomer();
+                    String customerNameSurname = customer.getName() + " " + customer.getSurname();
+                    response.setCustomerNameSurname(customerNameSurname);
+                    return response;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<GetAllAccountResponse> getAllAccountsForBroker(int id) {
+        return accountRepository.findByCustomer_User_Id(id).stream()
+                .map(account -> mapper.modelMapperForResponse().map(account, GetAllAccountResponse.class))
+                .collect(Collectors.toList());
+    }
+
     @Override
     public Account getByAccountNumber(String accountNumber) {
         return accountRepository.findByAccountNumber(accountNumber);
     }
 
     @Override
-    public AccountRequestTransaction checkIfAccountExists(String accountNumber, String currencyCode) {
-        Account account = accountRepository.findByAccountNumber(accountNumber);
-        return customerServiceImpl.checkAccountsForPurchasedCurrency(account, currencyCode);
+    public AccountRequestTransaction checkIfAccountExists(Long accountId, String currencyCode) {
+        Optional<Account> account = accountRepository.findById(accountId);
+        return customerServiceImpl.checkAccountsForPurchasedCurrency(account.get(), currencyCode);
     }
 
 
@@ -131,16 +157,31 @@ public class AccountServiceImp implements AccountService {
                 .map(account -> mapper.modelMapperForResponse().map(account, GetAllAccountResponse.class))
                 .collect(Collectors.toList());
     }
+
+    public List<GetCustomerAccountsForTransactionPage> getAccountsBalanceBiggerThanZeroByCustomerId(Long customerId) {
+        List<Account> accounts = accountRepository.findByCustomerId(customerId);
+        List<Account> biggerThanZero = new ArrayList<>();
+        for (Account account : accounts) {
+            if (account.getBalance().compareTo(BigDecimal.ZERO) > 0) {
+                biggerThanZero.add(account);
+            }
+        }
+        return biggerThanZero.stream()
+                .map(account -> mapper.modelMapperForResponse().map(account, GetCustomerAccountsForTransactionPage.class))
+                .collect(Collectors.toList());
+    }
+
+
     @Override
     public void reactivateAccount(Long id) {
         Account accountInDB = accountRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Account not found with id {}", id);
-                    throw new UserNotFoundException("Account not found with id " + id);
+                    throw new  AccountNotFoundException();
                 });
         if (!accountInDB.isDeleted()) {
             logger.warn("Attempt to reactivate an already active account: {}", accountInDB.getAccountNumber());
-            throw new RuntimeException("Account with id " + id + " is already active.");
+            throw new AccountAlreadyActiveException();
         }
         accountInDB.setDeleted(false);
         accountRepository.save(accountInDB);

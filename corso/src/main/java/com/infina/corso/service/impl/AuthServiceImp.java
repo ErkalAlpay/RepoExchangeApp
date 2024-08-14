@@ -6,11 +6,11 @@ import com.infina.corso.dto.request.CredentialsRequest;
 import com.infina.corso.dto.response.AuthResponse;
 import com.infina.corso.dto.response.GetUserByEmailResponse;
 import com.infina.corso.exception.AuthenticationException;
+import com.infina.corso.exception.GeneralErrorException;
 import com.infina.corso.model.Token;
 import com.infina.corso.model.User;
 import com.infina.corso.repository.UserRepository;
 import com.infina.corso.service.AuthService;
-import com.infina.corso.service.MailService;
 import com.infina.corso.service.TokenService;
 import com.infina.corso.util.EmailHelper;
 import org.apache.logging.log4j.LogManager;
@@ -50,16 +50,16 @@ public class AuthServiceImp implements AuthService {
         User inDB = userRepository.findByEmail(credentials.email())
                 .orElseThrow(() -> {
                     logger.error("User not found: {}", credentials.email());
-                    return new RuntimeException("User not found: " + credentials.email());
+                    return new AuthenticationException();
                 });
 
         if (inDB.isAccountLocked()) {
             logger.error("User account is locked: {}", credentials.email());
-            throw new RuntimeException("User account is locked: " + credentials.email());
+            throw new GeneralErrorException("corso.user.locked.error.message");
         }
-        if (!inDB.isDeleted()) {
-            logger.error("User account is not active: {}", credentials.email());
-            throw new RuntimeException("User account is not active: " + credentials.email());
+        if (inDB.isDeleted()) {
+            logger.error("User account is deleted: {}", credentials.email());
+            throw new GeneralErrorException("corso.user.deleted.error.message");
         }
 
         if (!passwordEncoder.matches(credentials.password(), inDB.getPassword())) {
