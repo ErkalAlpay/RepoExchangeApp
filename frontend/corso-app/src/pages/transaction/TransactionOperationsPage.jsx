@@ -22,6 +22,7 @@ const TransactionOperationsPage = () => {
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState('success');
   const [showAlert, setShowAlert] = useState(false); // Uyarı için state
+  
 
   const { user } = useAuth();
   const dispatch = useAppDispatch();
@@ -56,6 +57,11 @@ const TransactionOperationsPage = () => {
     setBuyCurrencyDisabled(true);
     setConfirmDisabled(true);
     setSellCurrencyDisabled(true);
+  };
+
+  const checkCurrencyAvailability = (currencyCode) => {
+    const account = accounts.find(account => account.currency === currencyCode);
+    return account !== undefined;
   };
 
 
@@ -158,6 +164,12 @@ const TransactionOperationsPage = () => {
 
   const onConfirmTransaction = () => {
     const selectedAccount = accounts.find(account => account.currency === selectedSellCurrency);
+    if (!checkCurrencyAvailability(selectedBuyCurrency)) {
+      setAlertMessage('Müşterinin alınacak döviz tipinde hesabı mevcut değil.');
+      setAlertType('warning');
+      setShowAlert(true);
+      return;
+    }
     if (amount > maxBuying) {
       setAlertMessage('Girdiğiniz miktar maksimum alınabilir dövizi aşıyor.');
       setAlertType('warning');
@@ -175,6 +187,7 @@ const TransactionOperationsPage = () => {
     }
   };
 
+  
   return (
     <div style={styles.container}>
       {createTransactionStatus === 'succeeded' && <div className='bg-success'>
