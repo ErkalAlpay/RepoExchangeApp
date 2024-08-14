@@ -20,8 +20,8 @@ public class ApiRequestThread extends Thread {
                 currencyService.getCurrencyRates();
                 triggerApiRequest();
 
-                // Sleep for 20 seconds
-                Thread.sleep(200000000); //20 saniyeye çekilecek
+                // 5 dakikada bir
+                Thread.sleep(300000);
             } catch (InterruptedException e) {
                 // Handle interruption
                 running = false;
