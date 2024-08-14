@@ -20,7 +20,6 @@ const initialState = {
 
 export const fetchCustomerListThunk = createAsyncThunk('transaction/fetchCustomerList', async (userId) => {
     const response = await fetchCustomerListApi(userId);
-    console.log("deneme erkal: "+ response);
     return response;
 });
 
@@ -40,9 +39,7 @@ export const fetchCurrencyCostThunk = createAsyncThunk(
 export const createTransactionThunk = createAsyncThunk(
     'transaction/createTransaction',
     async ({ account_id, purchasedCurrency, soldCurrency, amount, user_id }) => {
-        console.log("slice  içindeyiz mi ?******");
         const response = await createTransactionApi(account_id, purchasedCurrency, soldCurrency, amount, user_id);
-        console.log("Response log : " +response);
         return response;
     }
 );
