@@ -2,22 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { fetchTransactionListForBrokerThunk, fetchCustomerListThunk } from './../../features/transactionSlice';
 import useAuth from '../../hooks/useAuth';
-import 'bootstrap/dist/css/bootstrap.min.css';  // Bootstrap 5.3
+import 'bootstrap/dist/css/bootstrap.min.css';  
 
 const ListTransactionHistoryPage = () => {
-    const [selectedCustomer, setSelectedCustomer] = useState('');
-    // const [startDate, setStartDate] = useState('');
-    // const [endDate, setEndDate] = useState('');
     const [transactionList, setTransactionList] = useState([]);
     const dispatch = useAppDispatch();
     const customers = useAppSelector((state) => state.transaction.customers);
     const { user } = useAuth();
     const userId = user?.id;
-
-    useEffect(() => {
-        dispatch(fetchCustomerListThunk(user.id));
-    }, [dispatch, user.id]);
-
 
     const handleListClick = async () => {
         if (userId) {
@@ -48,28 +40,6 @@ const ListTransactionHistoryPage = () => {
     return (
         <div className="container mt-4">
             <div className="row mb-3">
-                <div className="col-md-4">
-                    <label className="form-label">
-                        Başlangıç Tarihi:
-                        <input
-                            type="date"
-                            className="form-control"
-                        // value={startDate}
-                        // onChange={(e) => setStartDate(e.target.value)}
-                        />
-                    </label>
-                </div>
-                <div className="col-md-4">
-                    <label className="form-label">
-                        Bitiş Tarihi:
-                        <input
-                            type="date"
-                            className="form-control"
-                        // value={endDate}
-                        // onChange={(e) => setEndDate(e.target.value)}
-                        />
-                    </label>
-                </div>
                 <div className="col-md-4 d-flex align-items-end">
                     <button onClick={handleListClick} className="btn btn-primary me-2">
                         Listele
@@ -80,15 +50,6 @@ const ListTransactionHistoryPage = () => {
                 </div>
             </div>
             <div>
-                <div style={styles.formGroup}>
-                    <label htmlFor="customerSelect" style={styles.label}>Müşteri Seçiniz</label>
-                    <select className="form-select" id="customerSelect" value={selectedCustomer} /*</div>onChange={handleCustomerChange}</div>*/ style={styles.select}>
-                        <option value="" disabled>Bir Müşteri Seçiniz</option>
-                        {customers?.content?.map((customer) => (
-                            <option key={customer.id} value={customer.id}>{customer.name} {customer.surname}</option>
-                        ))}
-                    </select>
-                </div>
                 <table className="table table-striped">
                     <thead>
                         <tr>
@@ -126,28 +87,5 @@ const ListTransactionHistoryPage = () => {
     );
 };
 
-const styles = {
-    container: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      marginTop: '2rem'
-    },
-    formGroup: {
-      marginBottom: '1rem',
-      width: '100%',
-      maxWidth: '400px'
-    },
-    label: {
-      display: 'block',
-      marginBottom: '0.5rem'
-    },
-    select: {
-      width: '100%'
-    },
-    input: {
-      width: '100%'
-    }
-  };
 
 export default ListTransactionHistoryPage;

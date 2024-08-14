@@ -5,14 +5,9 @@ import useAuth from '../../hooks/useAuth';
 import 'bootstrap/dist/css/bootstrap.min.css';  // Bootstrap 5.3
 
 const ListTransactionHistoryPageForManager = () => {
-    // const [startDate, setStartDate] = useState('');
-    // const [endDate, setEndDate] = useState('');
     const [transactionList, setTransactionList] = useState([]);
     const dispatch = useAppDispatch();
-    const { user } = useAuth();
-    const userId = user?.id;
-
-
+  
     const handleListClick = async () => {
             try {
                 const transactions = await dispatch(fetchTransactionListForManagerThunk()).unwrap();
@@ -38,28 +33,6 @@ const ListTransactionHistoryPageForManager = () => {
     return (
         <div className="container mt-4">
             <div className="row mb-3">
-                <div className="col-md-4">
-                    <label className="form-label">
-                        Başlangıç Tarihi:
-                        <input
-                            type="date"
-                            className="form-control"
-                        // value={startDate}
-                        // onChange={(e) => setStartDate(e.target.value)}
-                        />
-                    </label>
-                </div>
-                <div className="col-md-4">
-                    <label className="form-label">
-                        Bitiş Tarihi:
-                        <input
-                            type="date"
-                            className="form-control"
-                        // value={endDate}
-                        // onChange={(e) => setEndDate(e.target.value)}
-                        />
-                    </label>
-                </div>
                 <div className="col-md-4 d-flex align-items-end">
                     <button onClick={handleListClick} className="btn btn-primary me-2">
                         Listele
