@@ -1,22 +1,19 @@
 package com.infina.corso.service.impl;
 
-import java.util.LinkedHashMap;
-import java.util.Optional;
-import java.util.UUID;
-
-import com.infina.corso.dto.request.CredentialsRequest;
-import com.infina.corso.dto.response.GetUserByEmailResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infina.corso.model.Token;
 import com.infina.corso.model.User;
 import com.infina.corso.repository.UserRepository;
 import com.infina.corso.service.TokenService;
+import lombok.AllArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
+import java.util.LinkedHashMap;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @AllArgsConstructor
@@ -27,15 +24,11 @@ public class TokenServiceImpl implements TokenService {
     private final ObjectMapper objectmapper;
 
     @Override
-    public Token generateToken(GetUserByEmailResponse user, CredentialsRequest credentials) {
-        User inDb = userRepository.findById(user.getId()).orElseThrow(() -> {
-            logger.error("User not found: " + user.getId());
-            throw new IllegalArgumentException("User with ID " + user.getId() + " not found");
-
-        });
+    public Token generateToken(User user) {
         Token token = new Token();
         token.setTokenId(UUID.randomUUID().toString());
-        token.setUser(inDb);
+        token.setUser(user);
+        token.setActive(true);
         token.setExpirationDate(System.currentTimeMillis() + (3 * 60 * 60 * 1000));
         redisTemplate.opsForValue().set(token.getTokenId(), token);
         logger.info("Token generated: {}", token.getTokenId());
@@ -54,12 +47,15 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
+
     public void logout(String authorizationHeader) {
         var tokenInDb = extractToken(authorizationHeader);
-        if (!tokenInDb.isPresent())
-            return;
-        tokenInDb.get().setActive(false);
-        redisTemplate.opsForValue().set(tokenInDb.get().getTokenId(), tokenInDb.get());
+        if (tokenInDb.isPresent()) {
+            redisTemplate.delete(tokenInDb.get().getTokenId());
+            logger.info("Token deleted from Redis: " + tokenInDb.get().getTokenId());
+        } else {
+            logger.error("Token not found in Redis: " + authorizationHeader);
+        }
     }
 
     private Optional<Token> extractToken(String authorizationHeader) {

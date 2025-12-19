@@ -15,9 +15,12 @@ target/
 
 ### IntelliJ IDEA ###
 .idea
+.idea/modules.xml
 *.iws
 *.iml
 *.ipr
+
+
 
 ### NetBeans ###
 /nbproject/private/
@@ -35,3 +38,5 @@ build/
 ##
 data/
 logs/
+
+../logs/
